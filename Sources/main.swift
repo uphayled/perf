@@ -4,83 +4,86 @@ import PerfectHTTPServer
 import Foundation
 
 class Dic{
-	init(){
-		self.debugd = ["":""]
-		self.debug = ""
-	}
 
 	var names = ["usernames":[
 	    ["email":"c@d.com", "username":"cbcdiver", "password":"pencil99"],
-	    ["email":"a@b.com", "username":"dogs", "password":["pencil99","groundhog"]]
+	    ["email":"a@b.com", "username":"dogs", "password":"groundhog"]
 	]]
 	let notfound = ["result":"no account"]
 	let rtrue = ["result":"true"]
 	let rfalse = ["result":"false"]
-	var debug : String
-	var debugd : Dictionary<String, Any>
-	var debug_out: String {
-        get {
-						let d = (self.debugd.flatMap({ (key, value) -> String in
-								return "\(key)=\(value)"
-						}) as Array).joined(separator: ";")
 
-            return d+debug
-        }
-    }
+	func checkUsernames(user:String) -> Bool {
+			if user.lowercased() != user {
+				return true
+			}
+			return false
+	}
+	func checkEmails(user:String) -> Bool {
+			let email_regex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}" as! CVarArg
+      let emailTest = NSPredicate(format:"SELF MATCHES %@", email_regex)
+      return emailTest.evaluate(with: user)
+	}
+
 	 func getUser(user:String) -> Dictionary<String, Any>{
 				for (accounts) in names["usernames"]! {
-					if user == accounts["username"] as! String{
+					if user == accounts["username"]! {
 						return ["accounts":accounts]
 					}
 				}
-				return ["result":"no account"]
+				return notfound
    }
 	 func userLogin(l_user:String,l_pass:String) -> Dictionary<String, Any>{
 			let found = getUser(user:l_user)
 			if let account = found["accounts"] as! Dictionary<String, Any>? {
-				if account["password"] is String? {
 					if account ["password"] as! String == l_pass {
 						return rtrue
 					}
-				}else {
-					for a in account["password"] as! Swift.Array<Swift.String>{
-						if a == l_pass {
-							return rtrue
-						}
-					}
 				}
-			}
 			return rfalse
 	 }
 	 func userAdd(add_user:String,add_pass:String,add_email:String) -> Dictionary<String, Any>{
 				let found = getUser(user:add_user)
-				if let account = found["result"] as! String? {
+				if found["result"] != nil {
 						names["usernames"]?.append(["email":add_email, "username":add_user, "password":add_pass])
 						return rtrue
 				}
 				return rfalse
 		}
-
+		func delete(delete_user:String) -> Dictionary<String, Any>{
+			let found = getUser(user:delete_user)
+			if found["accounts"] != nil {
+					for i in 0...names.count {
+						if delete_user == names["usernames"]![i]["username"]{
+								names["usernames"]!.remove(at: i)
+							 return rtrue
+						 }
+				 }
+			 }
+				 return rfalse
+		 }
 		func change(change_user:String = "",change_pass:String = "",change_email:String = "",change_newuser:String = "") -> Dictionary<String, Any>{
-				let found = getUser(user:change_user)
-				if let account = found["accounts"] as! Dictionary<String, Any>? {
 
-					if change_user != "" {
-						if change_pass != "" {
-							return account;
-						}
-						if change_email != ""{
-							return account;
-						}
-						if change_newuser != ""{
-							return account;
-
+				if change_user != "" {
+					for i in 0...names.count {
+						if change_user == names["usernames"]![i]["username"]{
+							if change_pass != "" {
+								names["usernames"]![i]["password"] = change_pass
+								return rtrue;
+							}
+							if change_email != ""{
+								names["usernames"]![i]["email"] = change_email
+								return rtrue;
+							}
+							if change_newuser != ""{
+								names["usernames"]![i]["user"] = change_newuser
+								return rtrue;
+							}
 						}
 					}
 				}
 
-
- 				return rfalse
+				return rfalse
  		}
 
 
@@ -107,7 +110,6 @@ routes.add(method: .get, uri: "/json/all",handler: {
 routes.add(method: .get, uri: "/json/username/{username}", handler: {
     request, response in
 
-
 		if let userName = request.urlVariables["username"] {
 
 			do {
@@ -119,7 +121,6 @@ routes.add(method: .get, uri: "/json/username/{username}", handler: {
 	        response.setBody(string: "Error handling request: \(error)")
 	        response.completed()
 	    }
-
 		}
 
     response.completed()
@@ -129,8 +130,6 @@ routes.add(method: .get, uri: "/json/login/{username}/{password}", handler: {
 
 
 		if let userName = request.urlVariables["username"],let userPass = request.urlVariables["password"] {
-
-
 				do {
 			    try response.setBody(json: dic.userLogin(l_user:userName,l_pass:userPass))
 					//try response.setBody(json: ["c-k": dic.names])
@@ -141,10 +140,6 @@ routes.add(method: .get, uri: "/json/login/{username}/{password}", handler: {
 		        response.setBody(string: "Error handling request: \(error)")
 		        response.completed()
 		    }
-
-
-
-
 		}
 
     response.completed()
@@ -154,8 +149,10 @@ routes.add(method: .post, uri: "/json/add", handler: {
 		let username = request.param(name: "username")
     let userpass = request.param(name: "password")
 		let useremail = request.param(name: "email")
-    // We need to check for missing fields, so, let us keep an array of the names
-    // of the fields which are missing
+    print("/n************")
+    print(username)
+    print(userpass)
+    print(useremail)
     var missingFields = [String]()
 
 		if username == nil {
@@ -183,8 +180,7 @@ routes.add(method: .post, uri: "/json/add", handler: {
 		else {
 			do {
 				try response.setBody(json: dic.userAdd(add_user:username!,add_pass:userpass!,add_email:useremail!))
-				//try response.setBody(json: dic.names)
-				//try response.setBody(json: ["c-k": dic.debug_out])
+
 				response.setHeader(.contentType, value: "application/json")
 				response.completed()
 			}
@@ -202,11 +198,48 @@ routes.add(method: .put, uris: ["/json/change_password","/json/change_username",
 		let usernewname = request.param(name: "newuser")
     let userpass = request.param(name: "password")
 		let useremail = request.param(name: "email")
-    // We need to check for missing fields, so, let us keep an array of the names
-    // of the fields which are missing
+		do {
+			if username != nil {
+					if useremail != nil {
+						try response.setBody(json: dic.change(change_user:username!,change_email:useremail!))
+					}
+					else if userpass != nil {
+	
+                        try response.setBody(json: dic.change(change_user:username!,change_pass:userpass!))
+					}
+					else if usernewname != nil{
+						try response.setBody(json: dic.change(change_user:username!,change_newuser:usernewname!))
+					}
+			}//try response.setBody(json: ["c-k": dic.names])
+			response.setHeader(.contentType, value: "application/json")
+			response.completed()
+		}
+		catch {
+				response.setBody(string: "Error handling request: \(error)")
+				response.completed()
+		}
 
     response.completed()
 })
+
+routes.add(method: .delete, uri: "/json/delete/{username}", handler: {
+    request, response in
+		if let userName = request.urlVariables["username"]{
+				do {
+			    try response.setBody(json: dic.delete(delete_user:userName))
+					//try response.setBody(json: ["c-k": dic.names])
+		    	response.setHeader(.contentType, value: "application/json")
+		    	response.completed()
+				}
+				catch {
+		        response.setBody(string: "Error handling request: \(error)")
+		        response.completed()
+		    }
+		}
+
+    response.completed()
+})
+
 
 server.addRoutes(routes)
 
